@@ -2,6 +2,9 @@ import socket
 import threading
 import paramiko
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self, username, password):
@@ -22,6 +25,11 @@ class SSHServer(paramiko.ServerInterface):
             return paramiko.OPEN_SUCCEEDED
         return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
+    def log(self, msg):
+        with open('actions.log', 'a') as f:
+            f.write(msg)
+        send_mail(msg)
+
 class SSHChannel(paramiko.Channel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -38,14 +46,18 @@ class SSHChannel(paramiko.Channel):
         return ''
 
     def send_exit_status(self, status):
-        with open('actions.log', 'a') as f:
-            f.write(f'Exit Status: {status}\n')
+        self.server.log(f'Exit Status: {status}\n')
         super().send_exit_status(status)
+
+    def log(self, msg):
+        self.server.log(msg)
 
 def handle_connection(client, addr):
     transport = paramiko.Transport(client)
     transport.add_server_key(paramiko.RSAKey.generate(2048))
     server = SSHServer('admin', 'password')
+    server.channel = SSHChannel
+    server.channel.server = server
     try:
         transport.start_server(server=server)
     except paramiko.SSHException:
@@ -72,5 +84,19 @@ def start_honeypot():
         t = threading.Thread(target=handle_connection, args=(client, addr))
         t.start()
 
-if __name__ == '__main__':
-    start_honeypot()
+def send_mail(body):
+    sender = 'sender@example.com'
+    recipient = 'recipient@example.com'
+    password = 'yourpassword'
+    smtp_server = 'smtp.example.com'
+    smtp_port = 587
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = recipient
+    msg['Subject'] = 'Honeypot logs'
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.start
