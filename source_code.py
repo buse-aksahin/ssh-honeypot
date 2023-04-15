@@ -3,6 +3,7 @@ import threading
 import paramiko
 import time
 
+
 class SSHServer(paramiko.ServerInterface):
     def __init__(self, username, password):
         self.username = username
@@ -11,7 +12,7 @@ class SSHServer(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         with open('credentials.log', 'a') as f:
-            f.write(f'Username: {username}, Password: {password}')
+            f.write(f'Username: {username}, Password: {password}\n')
         if username == self.username and password == self.password:
             return paramiko.AUTH_SUCCESSFUL
         else:
@@ -69,7 +70,7 @@ def handle_connection(client, addr):
 def start_honeypot():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', 22))
+    s.bind(('0.0.0.0', 2222))
     s.listen(5)
     while True:
         try:
@@ -79,4 +80,4 @@ def start_honeypot():
         except Exception as e:
             print(f'Error: {e}')
 
-        server.quit()
+start_honeypot()
