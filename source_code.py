@@ -2,9 +2,6 @@ import socket
 import threading
 import paramiko
 import time
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self, username, password):
@@ -14,7 +11,7 @@ class SSHServer(paramiko.ServerInterface):
 
     def check_auth_password(self, username, password):
         with open('credentials.log', 'a') as f:
-            f.write(f'Username: {username}, Password: {password}\n')
+            f.write(f'Username: {username}, Password: {password}')
         if username == self.username and password == self.password:
             return paramiko.AUTH_SUCCESSFUL
         else:
@@ -24,11 +21,6 @@ class SSHServer(paramiko.ServerInterface):
         if kind == 'session':
             return paramiko.OPEN_SUCCEEDED
         return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
-
-    def log(self, msg):
-        with open('actions.log', 'a') as f:
-            f.write(msg)
-        send_mail(msg)
 
 class SSHChannel(paramiko.Channel):
     def __init__(self, *args, **kwargs):
@@ -55,7 +47,7 @@ class SSHChannel(paramiko.Channel):
 def handle_connection(client, addr):
     transport = paramiko.Transport(client)
     transport.add_server_key(paramiko.RSAKey.generate(2048))
-    server = SSHServer('admin', 'password')
+    server = SSHServer('adminn', 'password')
     server.channel = SSHChannel
     server.channel.server = server
     try:
@@ -80,23 +72,11 @@ def start_honeypot():
     s.bind(('0.0.0.0', 22))
     s.listen(5)
     while True:
-        client, addr = s.accept()
-        t = threading.Thread(target=handle_connection, args=(client, addr))
-        t.start()
+        try:
+            client, addr = s.accept()
+            t = threading.Thread(target=handle_connection, args=(client, addr))
+            t.start()
+        except Exception as e:
+            print(f'Error: {e}')
 
-def send_mail(body):
-    sender = 'sender@example.com'
-    recipient = 'recipient@example.com'
-    password = 'yourpassword'
-    smtp_server = 'smtp.example.com'
-    smtp_port = 587
-
-    msg = MIMEMultipart()
-    msg['From'] = sender
-    msg['To'] = recipient
-    msg['Subject'] = 'Honeypot logs'
-    msg.attach(MIMEText(body, 'plain'))
-
-    try:
-        server = smtplib.SMTP(smtp_server, smtp_port)
-        server.start
+        server.quit()
